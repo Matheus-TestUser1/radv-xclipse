@@ -140,6 +140,10 @@ struct radv_physical_device {
    bool emulate_etc2;
    /* The texture unit has no BC4/BC5/BC6H/BC7 decoder; decode them on the GPU at upload. */
    bool emulate_bc;
+   /* Process-local diagnostic: 0 unchanged, 1 trace, 2 native BC4/BC5 UNORM experiment.
+    * Only accepted on Xclipse 940 with the existing GFX11 texture descriptor table.
+    */
+   uint8_t xclipse_diag_bc45;
    /* Xclipse, on by default: BC5's (and BC4_SNORM's) EAC plane shares plane 0's memory and uploads transcode
     * straight from the copy's source buffer (radv_image.xclipse_bc_alias). Faster uploads, half the
     * memory; reads of the image AS BC5 (copies out, uint views) then return EAC data.

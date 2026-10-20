@@ -9,6 +9,7 @@
  */
 
 #include "vk_log.h"
+#include <stdio.h>
 
 #include "tools/radv_debug.h"
 #include "radv_buffer.h"
@@ -748,6 +749,19 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
       if (vk_format_has_stencil(image->vk.format))
          radv_initialise_ds_surface(device, &iview->stencil_only_desc, iview, VK_IMAGE_ASPECT_STENCIL_BIT,
                                     depth_compress_disable, stencil_compress_disable);
+   }
+
+   if (pdev->xclipse_diag_bc45 &&
+       (pCreateInfo->format == VK_FORMAT_BC3_UNORM_BLOCK || pCreateInfo->format == VK_FORMAT_BC4_UNORM_BLOCK ||
+        pCreateInfo->format == VK_FORMAT_BC5_UNORM_BLOCK)) {
+      const uint32_t *desc = iview->descriptor.plane_descriptors[0];
+      fprintf(stderr,
+              "x940-bc45-view: requested=%u effective=%u planes=%u plane=%u emulated=%u img_format=%u desc=",
+              pCreateInfo->format, iview->vk.view_format, image->plane_count, iview->plane_id,
+              radv_is_format_emulated(pdev, pCreateInfo->format), (desc[1] >> 20) & 0x1ff);
+      for (unsigned d = 0; d < 8; d++)
+         fprintf(stderr, "%s%08x", d ? "," : "", desc[d]);
+      fprintf(stderr, "\n");
    }
 }
 

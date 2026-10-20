@@ -444,9 +444,19 @@ radv_xclipse_is_native_etc2(const struct radv_physical_device *pdev, VkFormat fo
           format <= VK_FORMAT_EAC_R11G11_SNORM_BLOCK;
 }
 
+static bool
+radv_diag_native_bc45_format(const struct radv_physical_device *pdev, VkFormat format)
+{
+   return pdev->xclipse_diag_bc45 == 2 &&
+          (format == VK_FORMAT_BC4_UNORM_BLOCK || format == VK_FORMAT_BC5_UNORM_BLOCK);
+}
+
 bool
 radv_is_format_emulated(const struct radv_physical_device *pdev, VkFormat format)
 {
+   if (radv_diag_native_bc45_format(pdev, format))
+      return false;
+
    if (pdev->emulate_etc2 && vk_texcompress_etc2_emulation_format(format) != VK_FORMAT_UNDEFINED)
       return true;
 
@@ -719,7 +729,8 @@ radv_physical_device_get_format_properties(struct radv_physical_device *pdev, Vk
 
    /* The Xclipse 920 texture unit only decodes BC1-BC3. BC4-BC7 are emulated (decoded into a hidden
     * plane at upload, radv_meta_bc_decode.c): sampleable, never storage or colour attachments. */
-   if (pdev->info.gfx11_shader_core && radv_bc_emulation_format(format) != VK_FORMAT_UNDEFINED) {
+   if (pdev->info.gfx11_shader_core && radv_bc_emulation_format(format) != VK_FORMAT_UNDEFINED &&
+       !radv_diag_native_bc45_format(pdev, format)) {
       if (pdev->emulate_bc) {
          /* Emulated: sampleable, never a storage or colour-attachment target. */
          tiled &= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT |

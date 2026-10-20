@@ -3095,6 +3095,19 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    }
 #endif
 
+   pdev->xclipse_diag_bc45 = 0;
+   const char *bc45_diag = getenv("RADV_XCLIPSE_DIAG_BC45");
+   if (bc45_diag && bc45_diag[0]) {
+      const bool eligible = pdev->info.xclipse_model == AC_XCLIPSE_940 &&
+                            pdev->info.gfx11_shader_core && pdev->info.desc_gfx_level == GFX11;
+      if (eligible && !strcmp(bc45_diag, "trace"))
+         pdev->xclipse_diag_bc45 = 1;
+      else if (eligible && !strcmp(bc45_diag, "native"))
+         pdev->xclipse_diag_bc45 = 2;
+      fprintf(stderr, "x940-bc45-device: build=bc45-v1 eligible=%u mode=%u requested=%s\n",
+              eligible, pdev->xclipse_diag_bc45, bc45_diag);
+   }
+
 #if DETECT_OS_ANDROID
    pdev->emulate_etc2 = !pdev->info.has_etc_support;
    /* BC4-BC7 GPU decode (radv_meta_bc_decode.c). Apps that re-upload every frame (Eden) can drown

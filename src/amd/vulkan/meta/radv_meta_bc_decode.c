@@ -699,6 +699,9 @@ bc_decode(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image, VkImageL
    VkPipeline pipeline;
    VkPipelineLayout p_layout;
 
+   if (radv_device_physical(device)->xclipse_diag_bc45)
+      fprintf(stderr, "x940-bc45-meta-decode: format=%u\n", format);
+
    const uint64_t _pipe_t0 = radv_cpushare_now();
    const VkResult _pipe_r =
       get_pipeline(device, src_va ? bc_buf_variant(bc_variant(format)) : bc_variant(format), &pipeline, &p_layout);
