@@ -73,6 +73,13 @@ of the tools above. The build goes to `build-android-wayland/` (`BUILD_DIR` chan
 Other Xclipse models are not compatible for now. On the 950 and 960, avoid ray tracing settings in
 games until a later release fixes them.
 
+## AMD Anti-Lag
+
+`VK_AMD_anti_lag` tracks native Android and Wayland presentation paths. Applications
+must enable the `antiLag` feature and call `vkAntiLagUpdateAMD`; installing the driver
+alone does not activate it. See [Xclipse Anti-Lag](docs/xclipse-anti-lag.md) for usage,
+host regression checks and device validation requirements.
+
 ## Runtime switches
 
 Each switch is an environment variable or, for apps that cannot set one, an Android property.

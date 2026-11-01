@@ -13,6 +13,10 @@
 #include "vk_physical_device.h"
 #include "vk_queue.h"
 
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+#include "vulkan/vk_android_native_buffer.h"
+#endif
+
 #define MAX_FRAMES      8
 #define MAX_SUBMISSIONS 256
 #define MAX_QUERIES     (MAX_SUBMISSIONS * 2)
@@ -53,6 +57,9 @@ struct vk_frame_pacer {
 
    PFN_vkQueueSubmit2 queue_submit2;
    PFN_vkQueuePresentKHR queue_present;
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+   PFN_vkQueueSignalReleaseImageANDROID queue_release_image;
+#endif
    queue_context queue_ctx_data[];
 };
 
@@ -140,10 +147,12 @@ evaluate_frame(struct vk_frame_pacer *frame_pacer, struct vk_frame_time_info *fr
 
          for (unsigned i = 0; i < num_timestamps; i += 2) {
             /* Calibrate GPU begin timestamp. */
-            uint64_t begin_gpu_ts =
-               frame_pacer->calibration.base_host_ts +
-               (uint64_t)((double)(query_begin->gpu_ts - frame_pacer->calibration.base_device_ts) *
-                          (double)frame_pacer->calibration.timestamp_period);
+            /* A pending query can predate the latest calibration. Keep the delta signed
+             * before converting to floating point, otherwise it wraps to a huge delay.
+             */
+            int64_t gpu_delta = query_begin->gpu_ts - frame_pacer->calibration.base_device_ts;
+            uint64_t begin_gpu_ts = frame_pacer->calibration.base_host_ts +
+               (int64_t)((double)gpu_delta * (double)frame_pacer->calibration.timestamp_period);
 
             /* This value might be negative due to timestamp inaccuracies. */
             int64_t submission_delay = begin_gpu_ts - query_begin->submit_ts;
@@ -472,10 +481,9 @@ frame_pacer_QueueSubmit2(VkQueue _queue, uint32_t submitCount, const VkSubmitInf
    return res;
 }
 
-VKAPI_ATTR static VkResult VKAPI_CALL
-frame_pacer_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
+static void
+frame_pacer_present(struct vk_queue *queue)
 {
-   struct vk_queue *queue = vk_queue_from_handle(_queue);
    struct vk_device *device = queue->base.device;
    struct vk_frame_pacer *frame_pacer = device->frame_pacer;
 
@@ -506,9 +514,34 @@ frame_pacer_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo
       }
       ringbuffer_unlock(frame_pacer->frames);
    }
+}
 
+VKAPI_ATTR static VkResult VKAPI_CALL
+frame_pacer_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
+{
+   struct vk_queue *queue = vk_queue_from_handle(_queue);
+   struct vk_frame_pacer *frame_pacer = queue->base.device->frame_pacer;
+   frame_pacer_present(queue);
    return frame_pacer->queue_present(_queue, pPresentInfo);
 }
+
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+VKAPI_ATTR static VkResult VKAPI_CALL
+frame_pacer_QueueSignalReleaseImageANDROID(VkQueue _queue, uint32_t waitSemaphoreCount,
+                                          const VkSemaphore *pWaitSemaphores, VkImage image,
+                                          int *pNativeFenceFd)
+{
+   struct vk_queue *queue = vk_queue_from_handle(_queue);
+   struct vk_frame_pacer *frame_pacer = queue->base.device->frame_pacer;
+
+   /* Android's loader implements QueuePresentKHR outside the ICD. The native-buffer
+    * release is the frame boundary seen by the driver, including releases without waits.
+    */
+   frame_pacer_present(queue);
+   return frame_pacer->queue_release_image(_queue, waitSemaphoreCount, pWaitSemaphores,
+                                           image, pNativeFenceFd);
+}
+#endif
 
 void
 vk_frame_pacer_disable(struct vk_frame_pacer *frame_pacer)
@@ -734,6 +767,12 @@ vk_frame_pacer_init(struct vk_device *device, vk_frame_time_cb update_cb, size_t
    frame_pacer->queue_present = device->dispatch_table.QueuePresentKHR;
    device->dispatch_table.QueueSubmit2 = frame_pacer_QueueSubmit2;
    device->dispatch_table.QueuePresentKHR = frame_pacer_QueuePresentKHR;
+
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+   frame_pacer->queue_release_image = device->dispatch_table.QueueSignalReleaseImageANDROID;
+   if (frame_pacer->queue_release_image)
+      device->dispatch_table.QueueSignalReleaseImageANDROID = frame_pacer_QueueSignalReleaseImageANDROID;
+#endif
 
    return VK_SUCCESS;
 }
