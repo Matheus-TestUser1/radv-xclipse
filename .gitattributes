@@ -8,3 +8,5 @@
 docs/relnotes/new_features.txt merge=union
 *.sh text eol=lf
 *.cmd text eol=crlf
+# Retain the vendored AMD FSR headers byte-for-byte, including upstream trailing spaces.
+src/amd/vulkan/meta/fsr1/ffx_*.h whitespace=-blank-at-eol

@@ -48,6 +48,7 @@ struct radv_image {
    unsigned queue_family_mask;
    bool exclusive;
    bool dcc_sign_reinterpret;
+   bool wsi_image;
    bool support_comp_to_single;
 
    struct radv_image_binding bindings[3];

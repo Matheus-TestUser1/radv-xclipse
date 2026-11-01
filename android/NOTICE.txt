@@ -10,6 +10,11 @@ Mesa 3D Graphics Library (RADV, ACO, NIR, the Vulkan runtime and utilities)
    Copyright 2026 JimVulkan (the Xclipse changes)
    License: MIT
 
+AMD FidelityFX Super Resolution 1 (EASU and RCAS)
+   Copyright (c) 2021 Advanced Micro Devices, Inc. All rights reserved.
+   License: MIT
+   Source: GPUOpen-Effects/FidelityFX-FSR, a21ffb8f6c13233ba336352bdff293894c706575
+
 libdrm 2.4.133 (libdrm, libdrm_amdgpu)
    Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
    Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.

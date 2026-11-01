@@ -156,6 +156,9 @@ struct radv_physical_device {
     * debug.radv_xclipse_llc 1; off by default). */
    bool xclipse_llc;
 
+   /* Experimental FSR 1 for full-frame SDR upscaling blits: 0 off, 1 presentation, 2 all. */
+   uint8_t xclipse_fsr1_mode;
+
    /* Whether to emulate ASTC image support on HW without support. */
    bool emulate_astc;
 

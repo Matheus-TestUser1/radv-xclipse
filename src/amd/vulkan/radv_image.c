@@ -1954,8 +1954,10 @@ radv_CreateImage(VkDevice _device, const VkImageCreateInfo *pCreateInfo, const V
                                           .prime_blit_src = prime_blit_src,
                                        },
                                        pAllocator, pImage, false);
-   if (result == VK_SUCCESS)
+   if (result == VK_SUCCESS) {
+      radv_image_from_handle(*pImage)->wsi_image = wsi_info != NULL;
       radv_xclipse_bc6h_alt_create(device, radv_image_from_handle(*pImage), pCreateInfo);
+   }
    return result;
 }
 

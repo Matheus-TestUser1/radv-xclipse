@@ -9,6 +9,14 @@ zlib 1.3.1 (Zlib), both linked into the driver, and Expat 2.5.0 (MIT), which is 
 notices for everything compiled into the driver are in `android/NOTICE.txt`, which the
 package includes.
 
+## AMD FidelityFX Super Resolution 1 (MIT)
+
+`src/amd/vulkan/meta/fsr1/ffx_a.h` and `ffx_fsr1.h` are unmodified files from
+GPUOpen-Effects/FidelityFX-FSR, commit `a21ffb8f6c13233ba336352bdff293894c706575`.
+Copyright (c) 2021 Advanced Micro Devices, Inc. All rights reserved.
+The original MIT notices are retained in both headers and the binary package notice.
+`meta/radv_fsr1.h` adapts the constant setup to scalar C.
+
 ## Apache-2.0
 
 Text: `LICENSES/Apache-2.0.txt`

@@ -80,6 +80,14 @@ must enable the `antiLag` feature and call `vkAntiLagUpdateAMD`; installing the 
 alone does not activate it. See [Xclipse Anti-Lag](docs/xclipse-anti-lag.md) for usage,
 host regression checks and device validation requirements.
 
+## Experimental FSR 1
+
+`RADV_XCLIPSE_FSR1=1` (or `debug.radv_xclipse_fsr1=1`) enables AMD FSR 1 EASU + RCAS
+for eligible full-frame SDR upscaling blits into presentation images. Off by default.
+The application must provide a smaller source image and upscale it with `vkCmdBlitImage`;
+shader/compositor scaling and direct rendering at display resolution do not trigger it.
+See [FSR 1 usage and limitations](docs/xclipse-fsr1.md) before testing.
+
 ## Runtime switches
 
 Each switch is an environment variable or, for apps that cannot set one, an Android property.

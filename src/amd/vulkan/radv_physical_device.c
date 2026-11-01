@@ -103,6 +103,23 @@ radv_xclipse_flag_off(const char *env, const char *prop)
    return false;
 }
 
+static uint8_t
+radv_xclipse_fsr1_mode(void)
+{
+   const char *value = getenv("RADV_XCLIPSE_FSR1");
+#if DETECT_OS_ANDROID
+   char property[PROP_VALUE_MAX] = {0};
+   if (!value || !value[0]) {
+      __system_property_get("debug.radv_xclipse_fsr1", property);
+      value = property;
+   }
+#endif
+   /* Strict parsing, with environment taking precedence even when explicitly set to 0. */
+   if (!value || !value[0] || value[1] != '\0')
+      return 0;
+   return value[0] == '1' ? 1 : value[0] == '2' ? 2 : 0;
+}
+
 /* Allocatable system memory from /proc/meminfo MemAvailable; 0 if unavailable (callers must treat
  * 0 as "don't clamp"). Queried per frame, possibly from a thread the GPU waits on: raw
  * open/read/close, no stdio or malloc, cached ~500ms. */
@@ -3100,6 +3117,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    }
 #endif
 
+   pdev->xclipse_fsr1_mode = pdev->info.xclipse_model != AC_XCLIPSE_NONE ? radv_xclipse_fsr1_mode() : 0;
 #if DETECT_OS_ANDROID
    pdev->emulate_etc2 = !pdev->info.has_etc_support;
    /* BC4-BC7 GPU decode (radv_meta_bc_decode.c). Apps that re-upload every frame (Eden) can drown

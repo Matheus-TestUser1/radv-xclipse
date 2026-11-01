@@ -1,0 +1,36 @@
+/* SPDX-License-Identifier: MIT */
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+#define A_GPU 1
+#define A_GLSL 1
+#define FSR_EASU_F 1
+#include "fsr1/ffx_a.h"
+#include "fsr1/ffx_fsr1.h"
+
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(set = 0, binding = 0) uniform sampler2DArray source_image;
+layout(set = 0, binding = 1, std430) writeonly buffer OutputPixels { uint pixels[]; } output_image;
+layout(push_constant, std430) uniform Constants {
+   uvec4 con0;
+   uvec4 con1;
+   uvec4 con2;
+   uvec4 con3;
+   uvec4 size; /* input width/height, output width/height */
+} pc;
+
+AF4 FsrEasuRF(AF2 p) { return textureGather(source_image, vec3(p, 0.0), 0); }
+AF4 FsrEasuGF(AF2 p) { return textureGather(source_image, vec3(p, 0.0), 1); }
+AF4 FsrEasuBF(AF2 p) { return textureGather(source_image, vec3(p, 0.0), 2); }
+
+void main()
+{
+   uvec2 p = gl_GlobalInvocationID.xy;
+   if (any(greaterThanEqual(p, pc.size.zw)))
+      return;
+   vec3 color;
+   FsrEasuF(color, p, pc.con0, pc.con1, pc.con2, pc.con3);
+   vec2 uv = (vec2(p) + 0.5) / vec2(pc.size.zw);
+   float alpha = textureLod(source_image, vec3(uv, 0.0), 0.0).a;
+   output_image.pixels[p.y * pc.size.z + p.x] = packUnorm4x8(vec4(color, alpha));
+}

@@ -270,6 +270,20 @@ foreach v : [['unorm8', 'BC_OUT_UNORM8'], ['snorm8', 'BC_OUT_SNORM8'], ['f16', '
 endforeach
 libradv_files += radv_bc_decoder_spv
 
+# Optional Xclipse FSR 1 EASU + RCAS blit path. Both shaders use the unmodified AMD headers.
+foreach s : [['easu', 'comp'], ['rcas', 'frag']]
+  libradv_files += custom_target(
+    'fsr1_@0@_spv.h'.format(s[0]),
+    input : 'meta/fsr1_@0@.@1@'.format(s[0], s[1]),
+    output : 'fsr1_@0@_spv.h'.format(s[0]),
+    command : [prog_glslang, '-V', '-S', s[1], '-x',
+               '-I' + join_paths(meson.current_source_dir(), 'meta'),
+               '-o', '@OUTPUT@', '@INPUT@', glslang_quiet, glslang_depfile],
+    depfile : 'fsr1_@0@_spv.h.d'.format(s[0]),
+    depend_files : files('meta/fsr1/ffx_a.h', 'meta/fsr1/ffx_fsr1.h'),
+  )
+endforeach
+
 radv_deps = []
 radv_flags = cc.get_supported_arguments(['-Wimplicit-fallthrough', '-Wshadow'])
 
