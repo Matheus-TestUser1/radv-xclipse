@@ -7,6 +7,7 @@
 #include "nir_builder.h"
 #include "radv_nir.h"
 #include "radv_shader.h"
+#include "radv_nir_cmat_muladd_alu.h"
 
 /* This pass lowers cooperative matrix.
  *
@@ -44,6 +45,7 @@
 typedef struct {
    enum amd_gfx_level gfx_level;
    unsigned wave_size;
+   bool use_alu;
 } lower_cmat_params;
 
 static unsigned
@@ -569,8 +571,17 @@ lower_cmat_muladd(nir_builder *b, nir_intrinsic_instr *intr, const lower_cmat_pa
    enum glsl_base_type b_element_type =
       glsl_apply_signedness_to_base_type(b_desc.element_type, cmat_signed_mask & NIR_CMAT_B_SIGNED);
 
-   nir_def *ret = nir_cmat_muladd_amd(b, A, B, C, .saturate = nir_intrinsic_saturate(intr),
-                                      .src_base_type = a_element_type, .src_base_type2 = b_element_type);
+   nir_def *ret;
+   if (params->use_alu) {
+      assert(params->gfx_level < GFX11_7);
+      assert(a_desc.rows == 16 && a_desc.cols == 16 && b_desc.rows == 16 && b_desc.cols == 16);
+      assert((a_element_type == GLSL_TYPE_FLOAT || a_element_type == GLSL_TYPE_FLOAT16) &&
+             a_element_type == b_element_type && !nir_intrinsic_saturate(intr));
+      ret = radv_nir_cmat_muladd_alu(b, A, B, C, params->wave_size);
+   } else {
+      ret = nir_cmat_muladd_amd(b, A, B, C, .saturate = nir_intrinsic_saturate(intr),
+                              .src_base_type = a_element_type, .src_base_type2 = b_element_type);
+   }
 
    nir_deref_instr *dst_deref = nir_src_as_deref(intr->src[0]);
    nir_store_deref(b, dst_deref, ret, nir_component_mask(ret->num_components));
@@ -1264,7 +1275,8 @@ lower_cmat_get_coordinate(nir_builder *b, nir_intrinsic_instr *intr, const lower
 }
 
 bool
-radv_nir_lower_cooperative_matrix(nir_shader *shader, enum amd_gfx_level gfx_level, unsigned wave_size)
+radv_nir_lower_cooperative_matrix(nir_shader *shader, enum amd_gfx_level gfx_level, unsigned wave_size,
+                                  bool use_alu)
 {
    bool progress = false;
 
@@ -1274,6 +1286,7 @@ radv_nir_lower_cooperative_matrix(nir_shader *shader, enum amd_gfx_level gfx_lev
    const lower_cmat_params params = {
       .gfx_level = gfx_level,
       .wave_size = wave_size,
+      .use_alu = use_alu,
    };
 
    struct nir_function *func = (struct nir_function *)exec_list_get_head_const(&shader->functions);
