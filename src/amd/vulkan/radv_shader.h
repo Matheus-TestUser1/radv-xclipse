@@ -605,7 +605,9 @@ struct radv_compiler_info {
       uint32_t gfx10_descriptor_alias_robust : 1;
       uint32_t nir_debug_info : 1;
       uint32_t use_elf : 1;
-      uint32_t padding : 25;
+      /* Versioned cache tag: 0=disabled, 1=legacy ALU, 2=fixed-broadcast ALU. */
+      uint32_t xclipse_coopmat_alu : 2;
+      uint32_t padding : 23;
 
       int32_t force_aniso;
 

@@ -289,13 +289,13 @@ radv_filter_minmax_enabled(const struct radv_physical_device *pdev)
 static bool
 radv_cooperative_matrix_enabled(const struct radv_physical_device *pdev)
 {
-   return pdev->info.gfx_level >= GFX11 && !pdev->use_llvm;
+   return (pdev->info.gfx_level >= GFX11 || pdev->xclipse_coopmat_alu) && !pdev->use_llvm;
 }
 
 static bool
 radv_cooperative_matrix2_nv_enabled(const struct radv_physical_device *pdev)
 {
-   if (!radv_cooperative_matrix_enabled(pdev))
+   if (!radv_cooperative_matrix_enabled(pdev) || pdev->xclipse_coopmat_alu)
       return false;
 
    return pdev->drirc.features.cooperative_matrix2_nv;
@@ -1165,7 +1165,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_color_write_enable = true,
       .EXT_conditional_rendering = true,
       .EXT_conservative_rasterization = pdev->info.gfx_level >= GFX9,
-      .EXT_cooperative_matrix_maintenance1 = radv_cooperative_matrix_enabled(pdev),
+      .EXT_cooperative_matrix_maintenance1 = radv_cooperative_matrix_enabled(pdev) && !pdev->xclipse_coopmat_alu,
       .EXT_custom_border_color = true,
       .EXT_custom_resolve = true,
       .EXT_debug_marker = instance->vk.trace_mode & RADV_TRACE_MODE_RGP,
@@ -1903,7 +1903,7 @@ radv_physical_device_get_features(const struct radv_physical_device *pdev, struc
       /* VK_KHR_shader_bfloat16 */
       .shaderBFloat16Type = true,
       .shaderBFloat16DotProduct = pdev->info.gfx_level >= GFX12,
-      .shaderBFloat16CooperativeMatrix = radv_cooperative_matrix_enabled(pdev),
+      .shaderBFloat16CooperativeMatrix = radv_cooperative_matrix_enabled(pdev) && !pdev->xclipse_coopmat_alu,
 
       /* VK_EXT_zero_initialize_device_memory */
       .zeroInitializeDeviceMemory = true,
@@ -1920,7 +1920,7 @@ radv_physical_device_get_features(const struct radv_physical_device *pdev, struc
 
       /* VK_EXT_shader_float8 */
       .shaderFloat8 = true,
-      .shaderFloat8CooperativeMatrix = radv_cooperative_matrix_enabled(pdev),
+      .shaderFloat8CooperativeMatrix = radv_cooperative_matrix_enabled(pdev) && !pdev->xclipse_coopmat_alu,
 
       /* VK_NV_cooperative_matrix2 */
       .cooperativeMatrixConversionsNV = true,
@@ -3117,6 +3117,12 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    }
 #endif
 
+   /* Process-local experiment; keep the register interface and ISA target unchanged. */
+   pdev->xclipse_coopmat_alu = pdev->info.xclipse_model == AC_XCLIPSE_940 &&
+                              pdev->info.gfx11_shader_core && !pdev->use_llvm &&
+                              pdev->info.compiler_info.gfx_level < GFX11_7 &&
+                              debug_get_bool_option("RADV_XCLIPSE_COOPMAT_ALU", false);
+
    pdev->xclipse_fsr1_mode = pdev->info.xclipse_model != AC_XCLIPSE_NONE ? radv_xclipse_fsr1_mode() : 0;
 #if DETECT_OS_ANDROID
    pdev->emulate_etc2 = !pdev->info.has_etc_support;
@@ -4101,6 +4107,21 @@ fill_array_sizes_structs(const struct radv_physical_device *pdev, struct __vk_ou
     * vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR.
     */
    struct matrix_prop prop;
+
+   if (pdev->xclipse_coopmat_alu) {
+      /* Only the implemented 16x16x16 floating-point combinations. Prefer FP32. */
+      for (unsigned half = 0; half < 2; half++) {
+         prop = (struct matrix_prop){
+            .a_type = half ? VK_COMPONENT_TYPE_FLOAT16_KHR : VK_COMPONENT_TYPE_FLOAT32_KHR,
+            .b_type = half ? VK_COMPONENT_TYPE_FLOAT16_KHR : VK_COMPONENT_TYPE_FLOAT32_KHR,
+            .c_type = VK_COMPONENT_TYPE_FLOAT32_KHR,
+            .r_type = VK_COMPONENT_TYPE_FLOAT32_KHR,
+            .saturate = false,
+         };
+         (*array_size_cb)(base, &prop, fill_data);
+      }
+      return;
+   }
 
    if (pdev->info.gfx_level >= GFX11_7) {
       for (unsigned e5m2_a = 0; e5m2_a < 2; e5m2_a++) {

@@ -627,7 +627,7 @@ radv_shader_spirv_to_nir(const struct radv_compiler_info *compiler_info, struct 
       }
 
       NIR_PASS(progress, nir, radv_nir_lower_cooperative_matrix, compiler_info->ac->gfx_level,
-               nir->info.max_subgroup_size);
+               nir->info.max_subgroup_size, compiler_info->key.xclipse_coopmat_alu);
       if (progress) {
          NIR_PASS(_, nir, nir_opt_dce);
          NIR_PASS(progress, nir, nir_inline_functions);

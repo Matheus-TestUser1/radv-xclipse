@@ -88,6 +88,14 @@ The application must provide a smaller source image and upscale it with `vkCmdBl
 shader/compositor scaling and direct rendering at display resolution do not trigger it.
 See [FSR 1 usage and limitations](docs/xclipse-fsr1.md) before testing.
 
+## Experimental cooperative matrices on Xclipse 940
+
+`RADV_XCLIPSE_COOPMAT_ALU=1` enables `VK_KHR_cooperative_matrix` through the
+subgroup/ALU compiler path on Xclipse 940 with ACO. It is off by default and
+supports 16×16×16 FP16/FP32 inputs with FP32 accumulation. Wave32 uses shuffles;
+wave64 uses fixed-lane broadcasts to avoid the generic shuffle expansion.
+See [cooperative matrix usage and validation](docs/xclipse-cooperative-matrix.md).
+
 ## Runtime switches
 
 Each switch is an environment variable or, for apps that cannot set one, an Android property.

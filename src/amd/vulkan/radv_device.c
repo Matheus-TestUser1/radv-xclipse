@@ -1250,6 +1250,7 @@ radv_device_init_compiler_info(struct radv_device *device)
          {
             /* Shader features */
             .use_llvm = pdev->use_llvm,
+            .xclipse_coopmat_alu = pdev->xclipse_coopmat_alu ? 2 : 0,
             .use_ngg = pdev->use_ngg,
             .use_ngg_culling = pdev->use_ngg_culling,
             .nggc_max_ps_params = nggc_max_ps_params,
